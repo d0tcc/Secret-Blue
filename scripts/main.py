@@ -6,7 +6,7 @@ import logging as log
 import random
 import re
 from random import randrange
-from time import sleep
+from time import sleep, monotonic
 import json
 
 from os import system
@@ -305,6 +305,8 @@ def choose_chancellor(bot, game):
         # game, only the last elected Chancellor is
         # ineligible to be Chancellor Candidate; the
         # last President may be nominated.
+        if monotonic() > game.playerlist[uid].last_input + 20:
+            game.playerlist[uid].is_dead = True
         if len(game.player_sequence) > 5:
             if uid != game.board.state.nominated_president.uid and game.playerlist[
                 uid].is_dead == False and uid != pres_uid and uid != chan_uid:
@@ -352,6 +354,8 @@ def vote(bot, game):
     btns = [[InlineKeyboardButton("Ja", callback_data=strcid + "_Ja"), InlineKeyboardButton("Nein", callback_data=strcid + "_Nein")]]
     voteMarkup = InlineKeyboardMarkup(btns)
     for uid in game.playerlist:
+        if monotonic() > game.playerlist[uid].last_input + 20:
+            game.playerlist[uid].is_dead = True 
         if not game.playerlist[uid].is_dead:
             if game.playerlist[uid] is not game.board.state.nominated_president:
                 # the nominated president already got the board before nominating a chancellor
@@ -374,6 +378,9 @@ def handle_voting(bot, update):
         bot.edit_message_text("Thank you for your vote: %s to a President %s and a Chancellor %s" % (
             answer, game.board.state.nominated_president.name, game.board.state.nominated_chancellor.name), uid,
                               callback.message.message_id)
+        sent = bot.send_message(game, "Voted:")
+        for any in uid:
+            bot.edit_message_text("Voted:" + "\n" + any, game.cid, sent)  
         log.info("Player %s (%d) voted %s" % (callback.from_user.first_name, uid, answer))
         if uid not in game.board.state.last_votes:
             game.board.state.last_votes[uid] = answer
