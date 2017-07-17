@@ -5,7 +5,7 @@ Go check out this awesome game and support the creators!
 ##Start a game
 You can contact the bot via [t.me/thesecrethitlerbot](https://t.me/thesecrethitlerbot) or in Telegram under the name @thesecrethitlerbot.
 Click Start and add the bot to your group (you need 5-10 people). The rest should be self explanatory.
-If you have any problems or find a bug please contact me here on Github or via [Telegram](https://t.me/juschritt) (@juschritt)!
+If you have any problems or find a bug please open an issue here on github!
 
 ##The following commands are available:
 
