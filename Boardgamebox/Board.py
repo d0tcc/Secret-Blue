@@ -1,12 +1,14 @@
-from Constants import players, pile
+from Constants.Cards import playerSets
+from Constants.Cards import policies
 import random
+from Boardgamebox.State import State
 
 class Board(object):
     def __init__(self, playercount, game):
         self.state = State()
         self.num_players = playercount
-        self.fascist_track_actions = players[self.num_players]["track"]
-        self.policies = random.sample(pile, len(pile))
+        self.fascist_track_actions = playerSets[self.num_players]["track"]
+        self.policies = random.sample(policies, len(policies))
         self.game = game
         self.discards = []
         self.previous = []
@@ -60,23 +62,3 @@ class Board(object):
                 board += nh.name + ", "
             board = board[:-2]
         return board
-
-
-class State(object):
-    """Storage object for game state"""
-    def __init__(self):
-        self.liberal_track = 0
-        self.fascist_track = 0
-        self.failed_votes = 0
-        self.president = None
-        self.nominated_president = None
-        self.nominated_chancellor = None
-        self.chosen_president = None
-        self.chancellor = None
-        self.dead = 0
-        self.last_votes = {}
-        self.game_endcode = 0
-        self.drawn_policies = []
-        self.player_counter = 0
-        self.veto_refused = False
-        self.not_hitlers = []

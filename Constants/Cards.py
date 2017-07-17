@@ -1,6 +1,4 @@
-__author__ = "Julian Schrittwieser"
-
-players = {
+playerSets = {
     # only for testing purposes
     3: {
         "roles": [
@@ -153,7 +151,7 @@ players = {
     },
 }
 
-pile = [
+policies = [
         "liberal",
         "liberal",
         "liberal",
