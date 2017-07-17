@@ -2,272 +2,38 @@
 # -*- coding: utf-8 -*-
 __author__ = "Julian Schrittwieser"
 
+import json
 import logging as log
 import random
 import re
 from random import randrange
 from time import sleep
-import json
-
-from os import system
-from Board import Board
-from Constants import players
-from Game import Game
-from Player import Player
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import (Updater, CommandHandler, MessageHandler, Filters, RegexHandler,
-                          ConversationHandler, CallbackQueryHandler)
-from telegram.error import (TelegramError, Unauthorized, BadRequest,
-                            TimedOut, ChatMigrated, NetworkError)
+from telegram.ext import (Updater, CommandHandler, CallbackQueryHandler)
 
-from Config import TOKEN
-from Config import ADMIN
+import Commands
+from Constants.Cards import playerSets
+from Constants.Config import TOKEN
+from Boardgamebox.Game import Game
+from Boardgamebox.Player import Player
+import GamesController
 
 # Enable logging
 log.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                 level=log.INFO,
-                filename='../logs/logging.log')
+                filename='logs/logging.log')
 
 logger = log.getLogger(__name__)
 
-games = {}
 
-commands = [  # command description used in the "help" command
-    '/help - Gives you information about the available commands',
-    '/start - Gives you a short piece of information about Secret Hitler',
-    '/symbols - Shows you all possible symbols of the board',
-    '/rules - Gives you a link to the official Secret Hitler rules',
-    '/newgame - Creates a new game',
-    '/join - Joins an existing game',
-    '/startgame - Starts an existing game when all players have joined',
-    '/cancelgame - Cancels an existing game. All data of the game will be lost',
-    '/board - Prints the current board with fascist and liberals tracks, presidential order and election counter'
-]
-
-symbols = [
-    u"\u25FB\uFE0F" + ' Empty field without special power',
-    u"\u2716\uFE0F" + ' Field covered with a card',  # X
-    u"\U0001F52E" + ' Presidential Power: Policy Peek',  # crystal
-    u"\U0001F50E" + ' Presidential Power: Investigate Loyalty',  # inspection glass
-    u"\U0001F5E1" + ' Presidential Power: Execution',  # knife
-    u"\U0001F454" + ' Presidential Power: Call Special Election',  # tie
-    u"\U0001F54A" + ' Liberals win',  # dove
-    u"\u2620" + ' Fascists win'  # skull
-]
-
-
-def command_symbols(bot, update):
-    cid = update.message.chat_id
-    symbol_text = "The following symbols can appear on the board: \n"
-    for i in symbols:
-        symbol_text += i + "\n"
-    bot.send_message(cid, symbol_text)
-
-
-def command_board(bot, update):
-    cid = update.message.chat_id
-    if cid in games.keys():
-        if games[cid].board is not None:
-            bot.send_message(cid, games[cid].board.print_board())
-        else:
-            bot.send_message(cid, "There is no running game in this chat. Please start the game with /startgame")
-    else:
-        bot.send_message(cid, "There is no game in this chat. Create a new game with /newgame")
-
-
-def command_start(bot, update):
-    cid = update.message.chat_id
-    bot.send_message(cid,
-                     "\"Secret Hitler is a social deduction game for 5-10 people about finding and stopping the Secret Hitler."
-                     " The majority of players are liberals. If they can learn to trust each other, they have enough "
-                     "votes to control the table and win the game. But some players are fascists. They will say whatever "
-                     "it takes to get elected, enact their agenda, and blame others for the fallout. The liberals must "
-                     "work together to discover the truth before the fascists install their cold-blooded leader and win "
-                     "the game.\"\n- official description of Secret Hitler\n\nAdd me to a group and type /newgame to create a game!")
-    command_help(bot, update)
-
-
-def command_rules(bot, update):
-    cid = update.message.chat_id
-    btn = [[InlineKeyboardButton("Rules", url="http://www.secrethitler.com/assets/Secret_Hitler_Rules.pdf")]]
-    rulesMarkup = InlineKeyboardMarkup(btn)
-    bot.send_message(cid, "Read the official Secret Hitler rules:", reply_markup=rulesMarkup)
-
-
-# pings the bot
-def command_ping(bot, update):
-    cid = update.message.chat_id
-    bot.send_message(cid, 'pong - v0.2')
-
-
-# prints statistics, only ADMIN
-def command_stats(bot, update):
-    cid = update.message.chat_id
-    if cid == ADMIN:
-        with open("stats.json", 'r') as f:
-            stats = json.load(f)
-        stattext = "+++ Statistics +++\n" + \
-                    "Liberal Wins (policies): " + str(stats.get("libwin_policies")) + "\n" + \
-                    "Liberal Wins (killed Hitler): " + str(stats.get("libwin_kill")) + "\n" + \
-                    "Fascist Wins (policies): " + str(stats.get("fascwin_policies")) + "\n" + \
-                    "Fascist Wins (Hitler chancellor): " + str(stats.get("fascwin_hitler")) + "\n" + \
-                    "Games cancelled: " + str(stats.get("cancelled")) + "\n\n" + \
-                    "Total amount of groups: " + str(len(stats.get("groups"))) + "\n" + \
-                    "Games running right now: " + str(len(games))
-        bot.send_message(cid, stattext)
-
-
-# help page
-def command_help(bot, update):
-    cid = update.message.chat_id
-    help_text = "The following commands are available:\n"
-    for i in commands:
-        help_text += i + "\n"
-    bot.send_message(cid, help_text)
-
-
-# reboot, only ADMIN
-def command_reboot(bot, update):
-    cid = update.message.chat_id
-    if cid == ADMIN:
-        bot.send_message(cid, 'Reboot now!')
-        system('sudo reboot')
-
-# broadcast message to all groups, only ADMIN
-def command_broadcast(bot, update, args):
-    cid = update.message.chat_id
-    if cid == ADMIN:
-        with open("stats.json", 'r') as f:
-            stats = json.load(f)
-
-        toremove = []
-        for i in stats.get("groups"):
-            try:
-                bot.send_message(i, ' '.join(args))
-                log.info("message sent to group " + str(i))
-            except Unauthorized:
-                toremove.append(i)
-                log.info("couldnt send message to group (unauthorized) " + str(i))
-                continue
-            except BadRequest:
-                toremove.append(i)
-                log.info("couldnt send message to group (badrequest) " + str(i))
-                continue
-        for i in toremove:
-            stats.get("groups").remove(i)
-        with open("stats.json", 'w') as f:
-            json.dump(stats, f)
-        bot.send_message(cid, 'Messages sent!')
-
-def command_newgame(bot, update):
-    global game
-    cid = update.message.chat_id
-    grptype = update.message.chat.type
-    if grptype == 'group' or grptype == 'supergroup':
-        if cid not in games.keys():
-            games[cid] = Game(cid, update.message.from_user.id)
-            with open("stats.json", 'r') as f:
-                stats = json.load(f)
-            if cid not in stats.get("groups"):
-                stats.get("groups").append(cid)
-                with open("stats.json", 'w') as f:
-                    json.dump(stats, f)
-            bot.send_message(cid,
-                             "New game created! Each player has to /join the game.\nThe initiator of this game (or the admin) can /join too and type /startgame when everyone has joined the game!")
-        else:
-            bot.send_message(cid, "There is currently a game running. If you want to end it please type /cancelgame!")
-    else:
-        bot.send_message(cid, "You have to add me to a group first and type /newgame there!")
-
-
-def command_join(bot, update):
-    group_name = update.message.chat.title
-    cid = update.message.chat_id
-    grptype = update.message.chat.type
-    if grptype == 'group' or grptype == 'supergroup':
-        if cid in games.keys():
-            game = games[cid]
-            uid = update.message.from_user.id
-            fname = update.message.from_user.first_name
-            if game.board is None:  
-                if uid not in game.playerlist:
-                    if len(game.playerlist) < 10:
-                        player = Player(fname, uid)
-                        try:
-                            bot.send_message(uid,
-                                             "You joined a game in %s. I will soon tell you your secret role." % group_name)
-                            game.add_player(uid, player)
-                            if len(game.playerlist) > 4:
-                                bot.send_message(game.cid,
-                                                 fname + " has joined the game. Type /startgame if this was the last player and you want to start with %d players!" % len(
-                                                     game.playerlist))
-                            else:
-                                if len(game.playerlist) == 1:
-                                    bot.send_message(game.cid,
-                                                     "%s has joined the game. There is currently %d player in the game and you need 5-10 players." % (
-                                                         fname, len(game.playerlist)))
-                                else:
-                                    bot.send_message(game.cid,
-                                                     "%s has joined the game. There are currently %d players in the game and you need 5-10 players." % (
-                                                         fname, len(game.playerlist)))
-                        except Exception:
-                            bot.send_message(game.cid,
-                                             fname + ", I can\'t send you a private message. Please go to @thesecrethitlerbot and click \"Start\".\nYou then need to send /join again.")
-                    else:
-                        bot.send_message(game.cid,
-                                         "You have reached the maximum amount of players. Please start the game with /startgame!")
-                else:
-                    bot.send_message(game.cid, "You already joined the game, %s!" % fname)
-            else:
-                bot.send_message(cid, "The game has started. Please wait for the next game!")
-        else:
-            bot.send_message(cid, "There is no game in this chat. Create a new game with /newgame")
-    else:
-        bot.send_message(cid, "You have to add me to a group first and type /newgame there!")
-
-
-def command_startgame(bot, update):
-    log.info('command_startgame called')
-    cid = update.message.chat_id
-    group_name = update.message.chat.title
-    if cid in games.keys():
-        game = games[cid]
-        status = bot.getChatMember(cid, update.message.from_user.id).status
-        if game.board is None:
-            if update.message.from_user.id == game.initiator or status in ("administrator", "creator"):
-                player_number = len(game.playerlist)
-                if player_number > 4:
-                    inform_players(bot, game, game.cid, player_number)
-                    inform_fascists(bot, game, player_number)
-                    game.board = Board(player_number, game)
-                    game.shuffle_player_sequence()
-                    game.board.state.player_counter = 0
-                    bot.send_message(game.cid, game.board.print_board())
-                    #bot.send_message(ADMIN, "Game of Secret Hitler started in group %s (%d)" % (group_name, cid))
-                    start_round(bot, game)
-                else:
-                    bot.send_message(game.cid, "There are not enough players (min. 5, max. 10). Join the game with /join")
-            else:
-                bot.send_message(game.cid, "Only the initiator of the game or a group admin can start the game with /startgame")
-        else:
-            bot.send_message(cid, "The game is already running!")
-    else:
-        bot.send_message(cid, "There is no game in this chat. Create a new game with /newgame")
-
-
-def command_cancelgame(bot, update):
-    cid = update.message.chat_id
-    if cid in games.keys():
-        game = games[cid]
-        status = bot.getChatMember(cid, update.message.from_user.id).status
-        if update.message.from_user.id == game.initiator or status in ("administrator", "creator"):
-            end_game(bot, game, 99)
-        else:
-            bot.send_message(cid, "Only the initiator of the game or a group admin can cancel the game with /cancelgame")
-    else:
-        bot.send_message(cid, "There is no game in this chat. Create a new game with /newgame")
-
+def initialize_testdata():
+    # Sample game for quicker tests
+    testgame = Game(-1001113216265, 15771023)
+    GamesController.games[-1001113216265] = testgame
+    players = [Player("Александр", 320853702), Player("Gustav", 305333239), Player("Rene", 318940765), Player("Susi", 290308460), Player("Renate", 312027975)]
+    for player in players:
+        testgame.add_player(player.uid, player)
 
 ##
 #
@@ -324,12 +90,15 @@ def choose_chancellor(bot, game):
 
 def nominate_chosen_chancellor(bot, update):
     log.info('nominate_chosen_chancellor called')
+    log.info(GamesController.games.keys())
     callback = update.callback_query
     regex = re.search("(-[0-9]*)_chan_([0-9]*)", callback.data)
     cid = int(regex.group(1))
     chosen_uid = int(regex.group(2))
     try:
-        game = games[cid]
+        game = GamesController.games.get(cid, None)
+        log.info(game)
+        log.info(game.board)
         game.board.state.nominated_chancellor = game.playerlist[chosen_uid]
         log.info("President %s (%d) nominated %s (%d)" % (
             game.board.state.nominated_president.name, game.board.state.nominated_president.uid,
@@ -341,7 +110,7 @@ def nominate_chosen_chancellor(bot, update):
                              game.board.state.nominated_president.name, game.board.state.nominated_chancellor.name))
         vote(bot, game)
     except AttributeError as e:
-        log.error("nominate_chosen_chancellor: Game or board should not be None!")
+        log.error("nominate_chosen_chancellor: Game or board should not be None! Eror: " + str(e))
     except Exception as e:
         log.error("Unknown error: " + str(e))
 
@@ -349,7 +118,8 @@ def nominate_chosen_chancellor(bot, update):
 def vote(bot, game):
     log.info('vote called')
     strcid = str(game.cid)
-    btns = [[InlineKeyboardButton("Ja", callback_data=strcid + "_Ja"), InlineKeyboardButton("Nein", callback_data=strcid + "_Nein")]]
+    btns = [[InlineKeyboardButton("Ja", callback_data=strcid + "_Ja"),
+             InlineKeyboardButton("Nein", callback_data=strcid + "_Nein")]]
     voteMarkup = InlineKeyboardMarkup(btns)
     for uid in game.playerlist:
         if not game.playerlist[uid].is_dead:
@@ -369,7 +139,7 @@ def handle_voting(bot, update):
     cid = int(regex.group(1))
     answer = regex.group(2)
     try:
-        game = games[cid]
+        game = GamesController.games[cid]
         uid = callback.from_user.id
         bot.edit_message_text("Thank you for your vote: %s to a President %s and a Chancellor %s" % (
             answer, game.board.state.nominated_president.name, game.board.state.nominated_chancellor.name), uid,
@@ -392,8 +162,8 @@ def count_votes(bot, game):
             voting_text += game.playerlist[player.uid].name + " voted Ja!\n"
         elif game.board.state.last_votes[player.uid] == "Nein":
             voting_text += game.playerlist[player.uid].name + " voted Nein!\n"
-    if list(game.board.state.last_votes.values()).count("Ja") > len(
-            game.player_sequence) / 2:  # because player_sequence doesnt include dead
+    if list(game.board.state.last_votes.values()).count("Ja") > (
+        len(game.player_sequence) / 2):  # because player_sequence doesnt include dead
         # VOTING WAS SUCCESSFUL
         log.info("Voting successful")
         voting_text += "Hail President %s! Hail Chancellor %s!" % (
@@ -462,7 +232,7 @@ def choose_policy(bot, update):
     cid = int(regex.group(1))
     answer = regex.group(2)
     try:
-        game = games[cid]
+        game = GamesController.games[cid]
         strcid = str(game.cid)
         uid = callback.from_user.id
         if len(game.board.state.drawn_policies) == 3:
@@ -484,7 +254,8 @@ def choose_policy(bot, update):
                                  "Chancellor %s suggested a Veto to President %s." % (
                                      game.board.state.chancellor.name, game.board.state.president.name))
 
-                btns = [[InlineKeyboardButton("Veto! (accept suggestion)", callback_data=strcid + "_yesveto")], [InlineKeyboardButton("No Veto! (refuse suggestion)", callback_data=strcid + "_noveto")]]
+                btns = [[InlineKeyboardButton("Veto! (accept suggestion)", callback_data=strcid + "_yesveto")],
+                        [InlineKeyboardButton("No Veto! (refuse suggestion)", callback_data=strcid + "_noveto")]]
 
                 vetoMarkup = InlineKeyboardMarkup(btns)
                 bot.send_message(game.board.state.president.uid,
@@ -569,29 +340,29 @@ def enact_policy(bot, game, policy, anarchy):
                 start_next_round(bot, game)
             elif action == "policy":
                 bot.send_message(game.cid,
-                                 "Presidential Power enabled: Policy Peek " + u"\U0001F52E" + "\nPresident " + game.board.state.president.name + " now knows the next three policies on "
-                                                                                                                                                 "the pile.  The President may share "
-                                                                                                                                                 "(or lie about!) the results of their "
-                                                                                                                                                 "investigation at their discretion.")
+                                 "Presidential Power enabled: Policy Peek " + u"\U0001F52E" + "\nPresident %s now knows the next three policies on "
+                                                                                              "the pile.  The President may share "
+                                                                                              "(or lie about!) the results of their "
+                                                                                              "investigation at their discretion." % game.board.state.president.name)
                 action_policy(bot, game)
             elif action == "kill":
                 bot.send_message(game.cid,
-                                 "Presidential Power enabled: Execution " + u"\U0001F5E1" + "\nPresident " + game.board.state.president.name + " has to kill one person. You can "
-                                                                                                                                               "discuss the decision now but the "
-                                                                                                                                               "President has the final say.")
+                                 "Presidential Power enabled: Execution " + u"\U0001F5E1" + "\nPresident %s has to kill one person. You can "
+                                                                                            "discuss the decision now but the "
+                                                                                            "President has the final say." % game.board.state.president.name)
                 action_kill(bot, game)
             elif action == "inspect":
                 bot.send_message(game.cid,
-                                 "Presidential Power enabled: Investigate Loyalty " + u"\U0001F50E" + "\nPresident " + game.board.state.president.name + " may see the party membership of one "
-                                                                                                                                                         "player. The President may share "
-                                                                                                                                                         "(or lie about!) the results of their "
-                                                                                                                                                         "investigation at their discretion.")
+                                 "Presidential Power enabled: Investigate Loyalty " + u"\U0001F50E" + "\nPresident %s may see the party membership of one "
+                                                                                                      "player. The President may share "
+                                                                                                      "(or lie about!) the results of their "
+                                                                                                      "investigation at their discretion." % game.board.state.president.name)
                 action_inspect(bot, game)
             elif action == "choose":
                 bot.send_message(game.cid,
-                                 "Presidential Power enabled: Call Special Election " + u"\U0001F454" + "\nPresident " + game.board.state.president.name + " gets to choose the next presidential "
-                                                                                                                                                           "candidate. Afterwards the order resumes "
-                                                                                                                                                           "back to normal.")
+                                 "Presidential Power enabled: Call Special Election " + u"\U0001F454" + "\nPresident %s gets to choose the next presidential "
+                                                                                                        "candidate. Afterwards the order resumes "
+                                                                                                        "back to normal." % game.board.state.president.name)
                 action_choose(bot, game)
         else:
             start_next_round(bot, game)
@@ -606,7 +377,7 @@ def choose_veto(bot, update):
     cid = int(regex.group(1))
     answer = regex.group(2)
     try:
-        game = games[cid]
+        game = GamesController.games[cid]
         uid = callback.from_user.id
         if answer == "yesveto":
             log.info("Player %s (%d) accepted the veto" % (callback.from_user.first_name, uid))
@@ -680,7 +451,7 @@ def choose_kill(bot, update):
     cid = int(regex.group(1))
     answer = int(regex.group(2))
     try:
-        game = games[cid]
+        game = GamesController.games[cid]
         chosen = game.playerlist[answer]
         chosen.is_dead = True
         if game.player_sequence.index(chosen) <= game.board.state.player_counter:
@@ -727,7 +498,7 @@ def choose_choose(bot, update):
     cid = int(regex.group(1))
     answer = int(regex.group(2))
     try:
-        game = games[cid]
+        game = GamesController.games[cid]
         chosen = game.playerlist[answer]
         game.board.state.chosen_president = chosen
         log.info(
@@ -766,7 +537,7 @@ def choose_inspect(bot, update):
     cid = int(regex.group(1))
     answer = int(regex.group(2))
     try:
-        game = games[cid]
+        game = GamesController.games[cid]
         chosen = game.playerlist[answer]
         log.info(
             "Player %s (%d) inspects %s (%d)'s party membership (%s)" % (
@@ -814,10 +585,10 @@ def end_game(bot, game, game_endcode):
         stats = json.load(f)
 
     if game_endcode == 99:
-        if games[game.cid].board is not None:
+        if GamesController.games[game.cid].board is not None:
             bot.send_message(game.cid,
                              "Game cancelled!\n\n%s" % game.print_roles())
-            #bot.send_message(ADMIN, "Game of Secret Hitler canceled in group %d" % game.cid)
+            # bot.send_message(ADMIN, "Game of Secret Hitler canceled in group %d" % game.cid)
             stats['cancelled'] = stats['cancelled'] + 1
         else:
             bot.send_message(game.cid, "Game cancelled!")
@@ -839,11 +610,11 @@ def end_game(bot, game, game_endcode):
                              "Game over! The liberals win by killing Hitler!\n\n%s" % game.print_roles())
             stats['libwin_kill'] = stats['libwin_kill'] + 1
 
-        #bot.send_message(ADMIN, "Game of Secret Hitler ended in group %d" % game.cid)
+            # bot.send_message(ADMIN, "Game of Secret Hitler ended in group %d" % game.cid)
 
     with open("stats.json", 'w') as f:
         json.dump(stats, f)
-    del games[game.cid]
+    del GamesController.games[game.cid]
 
 
 def inform_players(bot, game, cid, player_number):
@@ -851,7 +622,7 @@ def inform_players(bot, game, cid, player_number):
     bot.send_message(cid,
                      "Let's start the game with %d players!\n%s\nGo to your private chat and look at your secret role!" % (
                          player_number, print_player_info(player_number)))
-    available_roles = list(players[player_number]["roles"])  # copy not reference because we need it again later
+    available_roles = list(playerSets[player_number]["roles"])  # copy not reference because we need it again later
     for uid in game.playerlist:
         random_index = randrange(len(available_roles))
         role = available_roles.pop(random_index)
@@ -878,45 +649,28 @@ def print_player_info(player_number):
 
 def inform_fascists(bot, game, player_number):
     log.info('inform_fascists called')
-    if player_number == 5 or player_number == 6:
-        for uid in game.playerlist:
-            role = game.playerlist[uid].role
-            if role == "Hitler":
-                fascists = game.get_fascists()
-                if len(fascists) > 1:
-                    bot.send_message(uid, "Error. There should be only one Fascist in a 5/6 player game!")
-                else:
-                    bot.send_message(uid, "Your fellow fascist is: %s" % fascists[0].name)
-            elif role == "Fascist":
-                hitler = game.get_hitler()
-                bot.send_message(uid, "Hitler is: %s" % hitler.name)
-            elif role == "Liberal":
-                pass
-            else:
-                log.error("inform_fascists: can\'t handle the role %s" % role)
 
-    else:
-        for uid in game.playerlist:
-            role = game.playerlist[uid].role
-            if role == "Fascist":
+    for uid in game.playerlist:
+        role = game.playerlist[uid].role
+        if role == "Fascist":
+            fascists = game.get_fascists()
+            if player_number > 6:
+                fstring = ""
+                for f in fascists:
+                    if f.uid != uid:
+                        fstring += f.name + ", "
+                fstring = fstring[:-2]
+                bot.send_message(uid, "Your fellow fascists are: %s" % fstring)
+            hitler = game.get_hitler()
+            bot.send_message(uid, "Hitler is: %s" % hitler.name)
+        elif role == "Hitler":
+            if player_number <= 6:
                 fascists = game.get_fascists()
-                if len(fascists) == 1:
-                    bot.send_message(uid, "Error: There should be more than one Fascist in a 7/8/9/10 player game!")
-                else:
-                    fstring = ""
-                    for f in fascists:
-                        if f.uid != uid:
-                            fstring += f.name + ", "
-                    fstring = fstring[:-2]
-                    bot.send_message(uid, "Your fellow fascists are: %s" % fstring)
-                    hitler = game.get_hitler()
-                    bot.send_message(uid, "Hitler is: %s" % hitler.name)
-            elif role == "Hitler":
-                pass
-            elif role == "Liberal":
-                pass
-            else:
-                log.error("inform_fascists: can\'t handle the role %s" % role)
+                bot.send_message(uid, "Your fellow fascist is: %s" % fascists[0].name)
+        elif role == "Liberal":
+            pass
+        else:
+            log.error("inform_fascists: can\'t handle the role %s" % role)
 
 
 def get_membership(role):
@@ -952,25 +706,26 @@ def error(bot, update, error):
 
 
 def main():
+    GamesController.init() #Call only once
+    #initialize_testdata()
+
     updater = Updater(TOKEN)
 
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
 
     # on different commands - answer in Telegram
-    dp.add_handler(CommandHandler("start", command_start))
-    dp.add_handler(CommandHandler("help", command_help))
-    dp.add_handler(CommandHandler("board", command_board))
-    dp.add_handler(CommandHandler("rules", command_rules))
-    dp.add_handler(CommandHandler("ping", command_ping))
-    dp.add_handler(CommandHandler("symbols", command_symbols))
-    dp.add_handler(CommandHandler("stats", command_stats))
-    dp.add_handler(CommandHandler("reboot", command_reboot))
-    dp.add_handler(CommandHandler("newgame", command_newgame))
-    dp.add_handler(CommandHandler("startgame", command_startgame))
-    dp.add_handler(CommandHandler("cancelgame", command_cancelgame))
-    dp.add_handler(CommandHandler("broadcast", command_broadcast, pass_args=True))
-    dp.add_handler(CommandHandler("join", command_join))
+    dp.add_handler(CommandHandler("start", Commands.command_start))
+    dp.add_handler(CommandHandler("help", Commands.command_help))
+    dp.add_handler(CommandHandler("board", Commands.command_board))
+    dp.add_handler(CommandHandler("rules", Commands.command_rules))
+    dp.add_handler(CommandHandler("ping", Commands.command_ping))
+    dp.add_handler(CommandHandler("symbols", Commands.command_symbols))
+    dp.add_handler(CommandHandler("stats", Commands.command_stats))
+    dp.add_handler(CommandHandler("newgame", Commands.command_newgame))
+    dp.add_handler(CommandHandler("startgame", Commands.command_startgame))
+    dp.add_handler(CommandHandler("cancelgame", Commands.command_cancelgame))
+    dp.add_handler(CommandHandler("join", Commands.command_join))
 
     dp.add_handler(CallbackQueryHandler(pattern="(-[0-9]*)_chan_(.*)", callback=nominate_chosen_chancellor))
     dp.add_handler(CallbackQueryHandler(pattern="(-[0-9]*)_insp_(.*)", callback=choose_inspect))
