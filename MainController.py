@@ -411,6 +411,8 @@ def do_anarchy(bot, game):
     log.info('do_anarchy called')
     bot.send_message(game.cid, game.board.print_board())
     bot.send_message(game.cid, "ANARCHY!!")
+    game.board.state.president = None
+    game.board.state.chancellor = None
     top_policy = game.board.policies.pop(0)
     game.board.state.last_votes = {}
     enact_policy(bot, game, top_policy, True)
