@@ -14,7 +14,7 @@ from telegram.ext import (Updater, CommandHandler, CallbackQueryHandler)
 
 import Commands
 from Constants.Cards import playerSets
-from Constants.Config import TOKEN
+from Constants.Config import TOKEN, STATS
 from Boardgamebox.Game import Game
 from Boardgamebox.Player import Player
 import GamesController
@@ -585,7 +585,7 @@ def end_game(bot, game, game_endcode):
     #   2   liberals win by killing Hitler
     #   99  game cancelled
     #
-    with open("stats.json", 'r') as f:
+    with open(STATS, 'r') as f:
         stats = json.load(f)
 
     if game_endcode == 99:
@@ -616,7 +616,7 @@ def end_game(bot, game, game_endcode):
 
             # bot.send_message(ADMIN, "Game of Secret Hitler ended in group %d" % game.cid)
 
-    with open("stats.json", 'w') as f:
+    with open(STATS, 'w') as f:
         json.dump(stats, f)
     del GamesController.games[game.cid]
 
