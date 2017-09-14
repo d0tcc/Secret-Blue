@@ -22,7 +22,7 @@ import GamesController
 # Enable logging
 log.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                 level=log.INFO,
-                filename='logs/logging.log')
+                filename='../logs/logging.log')
 
 logger = log.getLogger(__name__)
 
