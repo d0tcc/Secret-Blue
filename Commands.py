@@ -5,6 +5,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 import MainController
 import GamesController
+from Constants.Config import STATS
 from Boardgamebox.Board import Board
 from Boardgamebox.Game import Game
 from Boardgamebox.Player import Player
@@ -89,7 +90,7 @@ def command_ping(bot, update):
 def command_stats(bot, update):
     cid = update.message.chat_id
     if cid == ADMIN:
-        with open("stats.json", 'r') as f:
+        with open(STATS, 'r') as f:
             stats = json.load(f)
         stattext = "+++ Statistics +++\n" + \
                     "Liberal Wins (policies): " + str(stats.get("libwin_policies")) + "\n" + \
@@ -121,11 +122,11 @@ def command_newgame(bot, update):
         bot.send_message(cid, "There is currently a game running. If you want to end it please type /cancelgame!")
     else:
         GamesController.games[cid] = Game(cid, update.message.from_user.id)
-        with open("stats.json", 'r') as f:
+        with open(STATS, 'r') as f:
             stats = json.load(f)
         if cid not in stats.get("groups"):
             stats.get("groups").append(cid)
-            with open("stats.json", 'w') as f:
+            with open(STATS, 'w') as f:
                 json.dump(stats, f)
         bot.send_message(cid, "New game created! Each player has to /join the game.\nThe initiator of this game (or the admin) can /join too and type /startgame when everyone has joined the game!")
 
