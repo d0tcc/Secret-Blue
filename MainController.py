@@ -331,6 +331,8 @@ def enact_policy(bot, game, policy, anarchy):
         game.board.state.game_endcode = -1
         end_game(bot, game, game.board.state.game_endcode)  # fascists win with 6 fascist policies
     sleep(3)
+    # End of legislative session, shuffle if necessary 
+    shuffle_policy_pile(bot, game)    
     if not anarchy:
         if policy == "fascist":
             action = game.board.fascist_track_actions[game.board.state.fascist_track - 1]
