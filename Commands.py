@@ -174,7 +174,7 @@ def command_startgame(bot, update):
         bot.send_message(cid, "There is no game in this chat. Create a new game with /newgame")
     elif game.board:
         bot.send_message(cid, "The game is already running!")
-    elif update.message.from_user.id != game.initiator or bot.getChatMember(cid, update.message.from_user.id).status not in ("administrator", "creator"):
+    elif update.message.from_user.id != game.initiator and bot.getChatMember(cid, update.message.from_user.id).status not in ("administrator", "creator"):
         bot.send_message(game.cid, "Only the initiator of the game or a group admin can start the game with /startgame")
     elif len(game.playerlist) < 5:
         bot.send_message(game.cid, "There are not enough players (min. 5, max. 10). Join the game with /join")
