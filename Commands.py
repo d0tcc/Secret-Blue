@@ -161,13 +161,14 @@ def command_join(bot, update):
         except Exception:
             bot.send_message(game.cid,
                              fname + ", I can\'t send you a private message. Please go to @thesecrethitlerbot and click \"Start\".\nYou then need to send /join again.")
-        log.info("%s (%d) joined a game in %d" % (fname, uid, game.cid))
-        if len(game.playerlist) > 4:
-            bot.send_message(game.cid, fname + " has joined the game. Type /startgame if this was the last player and you want to start with %d players!" % len(game.playerlist))
-        elif len(game.playerlist) == 1:
-            bot.send_message(game.cid, "%s has joined the game. There is currently %d player in the game and you need 5-10 players." % (fname, len(game.playerlist)))
         else:
-            bot.send_message(game.cid, "%s has joined the game. There are currently %d players in the game and you need 5-10 players." % (fname, len(game.playerlist)))
+            log.info("%s (%d) joined a game in %d" % (fname, uid, game.cid))
+            if len(game.playerlist) > 4:
+                bot.send_message(game.cid, fname + " has joined the game. Type /startgame if this was the last player and you want to start with %d players!" % len(game.playerlist))
+            elif len(game.playerlist) == 1:
+                bot.send_message(game.cid, "%s has joined the game. There is currently %d player in the game and you need 5-10 players." % (fname, len(game.playerlist)))
+            else:
+                bot.send_message(game.cid, "%s has joined the game. There are currently %d players in the game and you need 5-10 players." % (fname, len(game.playerlist)))
 
 
 def command_startgame(bot, update):
@@ -208,66 +209,68 @@ def command_cancelgame(bot, update):
             bot.send_message(cid, "Only the initiator of the game or a group admin can cancel the game with /cancelgame")
     else:
         bot.send_message(cid, "There is no game in this chat. Create a new game with /newgame")
-        
+
+
 def command_votes(bot, update):
-	try:
-		#Send message of executing command   
-		cid = update.message.chat_id
-		#bot.send_message(cid, "Looking for history...")
-		#Check if there is a current game 
-		if cid in GamesController.games.keys():
-			game = GamesController.games.get(cid, None)
-			if not game.dateinitvote:
-				# If date of init vote is null, then the voting didnt start          
-				bot.send_message(cid, "The voting didn't start yet.")
-			else:
-				#If there is a time, compare it and send history of votes.
-				start = game.dateinitvote
-				stop = datetime.datetime.now()
-				elapsed = stop - start
-				if elapsed > datetime.timedelta(minutes=1):
-					history_text = "Vote history for President %s and Chancellor %s:\n\n" % (game.board.state.nominated_president.name, game.board.state.nominated_chancellor.name)
-					for player in game.player_sequence:
-						# If the player is in the last_votes (He voted), mark him as he registered a vote
-						if player.uid in game.board.state.last_votes:
-							history_text += "%s registered a vote.\n" % (game.playerlist[player.uid].name)
-						else:
-							history_text += "%s didn't register a vote.\n" % (game.playerlist[player.uid].name)
-					bot.send_message(cid, history_text)
-				else:
-					bot.send_message(cid, "Five minutes must pass to see the votes") 
-		else:
-			bot.send_message(cid, "There is no game in this chat. Create a new game with /newgame")
-	except Exception as e:
-		bot.send_message(cid, str(e))
+    try:
+        #Send message of executing command
+        cid = update.message.chat_id
+        #bot.send_message(cid, "Looking for history...")
+        #Check if there is a current game
+        if cid in GamesController.games.keys():
+            game = GamesController.games.get(cid, None)
+            if not game.dateinitvote:
+                # If date of init vote is null, then the voting didnt start
+                bot.send_message(cid, "The voting didn't start yet.")
+            else:
+                #If there is a time, compare it and send history of votes.
+                start = game.dateinitvote
+                stop = datetime.datetime.now()
+                elapsed = stop - start
+                if elapsed > datetime.timedelta(minutes=1):
+                    history_text = "Vote history for President %s and Chancellor %s:\n\n" % (game.board.state.nominated_president.name, game.board.state.nominated_chancellor.name)
+                    for player in game.player_sequence:
+                        # If the player is in the last_votes (He voted), mark him as he registered a vote
+                        if player.uid in game.board.state.last_votes:
+                            history_text += "%s registered a vote.\n" % (game.playerlist[player.uid].name)
+                        else:
+                            history_text += "%s didn't register a vote.\n" % (game.playerlist[player.uid].name)
+                    bot.send_message(cid, history_text)
+                else:
+                    bot.send_message(cid, "Five minutes must pass to see the votes")
+        else:
+            bot.send_message(cid, "There is no game in this chat. Create a new game with /newgame")
+    except Exception as e:
+        bot.send_message(cid, str(e))
+
 
 def command_calltovote(bot, update):
-	try:
-		#Send message of executing command   
-		cid = update.message.chat_id
-		#bot.send_message(cid, "Looking for history...")
-		#Check if there is a current game 
-		if cid in GamesController.games.keys():
-			game = GamesController.games.get(cid, None)
-			if not game.dateinitvote:
-				# If date of init vote is null, then the voting didnt start          
-				bot.send_message(cid, "The voting didn't start yet.")
-			else:
-				#If there is a time, compare it and send history of votes.
-				start = game.dateinitvote
-				stop = datetime.datetime.now()          
-				elapsed = stop - start
-				if elapsed > datetime.timedelta(minutes=1):
-					# Only remember to vote to players that are still in the game
-					history_text = ""
-					for player in game.player_sequence:
-						# If the player is not in last_votes send him reminder
-						if player.uid not in game.board.state.last_votes:
-							history_text += "It's time to vote [%s](tg://user?id=%d).\n" % (game.playerlist[player.uid].name, player.uid)
-					bot.send_message(cid, text=history_text, parse_mode=ParseMode.MARKDOWN)
-				else:
-					bot.send_message(cid, "Five minutes must pass to see call to vote") 
-		else:
-			bot.send_message(cid, "There is no game in this chat. Create a new game with /newgame")
-	except Exception as e:
-		bot.send_message(cid, str(e))
+    try:
+        #Send message of executing command
+        cid = update.message.chat_id
+        #bot.send_message(cid, "Looking for history...")
+        #Check if there is a current game
+        if cid in GamesController.games.keys():
+            game = GamesController.games.get(cid, None)
+            if not game.dateinitvote:
+                # If date of init vote is null, then the voting didnt start
+                bot.send_message(cid, "The voting didn't start yet.")
+            else:
+                #If there is a time, compare it and send history of votes.
+                start = game.dateinitvote
+                stop = datetime.datetime.now()
+                elapsed = stop - start
+                if elapsed > datetime.timedelta(minutes=1):
+                    # Only remember to vote to players that are still in the game
+                    history_text = ""
+                    for player in game.player_sequence:
+                        # If the player is not in last_votes send him reminder
+                        if player.uid not in game.board.state.last_votes:
+                            history_text += "It's time to vote [%s](tg://user?id=%d).\n" % (game.playerlist[player.uid].name, player.uid)
+                    bot.send_message(cid, text=history_text, parse_mode=ParseMode.MARKDOWN)
+                else:
+                    bot.send_message(cid, "Five minutes must pass to see call to vote")
+        else:
+            bot.send_message(cid, "There is no game in this chat. Create a new game with /newgame")
+    except Exception as e:
+        bot.send_message(cid, str(e))
