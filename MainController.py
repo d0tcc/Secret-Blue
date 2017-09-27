@@ -19,6 +19,8 @@ from Boardgamebox.Game import Game
 from Boardgamebox.Player import Player
 import GamesController
 
+import datetime
+
 # Enable logging
 log.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                 level=log.INFO,
@@ -117,6 +119,8 @@ def nominate_chosen_chancellor(bot, update):
 
 def vote(bot, game):
     log.info('vote called')
+    #When voting starts we start the counter to see later with the vote/calltovote command we can see who voted.
+    game.dateinitvote = datetime.datetime.now()
     strcid = str(game.cid)
     btns = [[InlineKeyboardButton("Ja", callback_data=strcid + "_Ja"),
              InlineKeyboardButton("Nein", callback_data=strcid + "_Nein")]]
@@ -155,6 +159,8 @@ def handle_voting(bot, update):
 
 def count_votes(bot, game):
     log.info('count_votes called')
+    # Voted Ended
+    game.dateinitvote = None
     voting_text = ""
     voting_success = False
     for player in game.player_sequence:
@@ -730,6 +736,8 @@ def main():
     dp.add_handler(CommandHandler("startgame", Commands.command_startgame))
     dp.add_handler(CommandHandler("cancelgame", Commands.command_cancelgame))
     dp.add_handler(CommandHandler("join", Commands.command_join))
+    dp.add_handler(CommandHandler("votes", Commands.command_votes))
+    dp.add_handler(CommandHandler("calltovote", Commands.command_calltovote))
 
     dp.add_handler(CallbackQueryHandler(pattern="(-[0-9]*)_chan_(.*)", callback=nominate_chosen_chancellor))
     dp.add_handler(CallbackQueryHandler(pattern="(-[0-9]*)_insp_(.*)", callback=choose_inspect))
