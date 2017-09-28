@@ -90,7 +90,7 @@ def command_rules(bot, update):
 # pings the bot
 def command_ping(bot, update):
     cid = update.message.chat_id
-    bot.send_message(cid, 'pong - v0.3')
+    bot.send_message(cid, 'pong - v0.4')
 
 
 # prints statistics, only ADMIN
