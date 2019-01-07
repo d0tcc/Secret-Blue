@@ -4,7 +4,7 @@ playerSets = {
         "roles": [
             "Liberal",
             "Fascist",
-            "Hitler"
+            "Blue"
         ],
         "track": [
             None,
@@ -21,7 +21,7 @@ playerSets = {
             "Liberal",
             "Liberal",
             "Fascist",
-            "Hitler"
+            "Blue"
         ],
         "track": [
             None,
@@ -38,7 +38,7 @@ playerSets = {
             "Liberal",
             "Liberal",
             "Fascist",
-            "Hitler"
+            "Blue"
         ],
         "track": [
             None,
@@ -56,7 +56,7 @@ playerSets = {
             "Liberal",
             "Liberal",
             "Fascist",
-            "Hitler"
+            "Blue"
         ],
         "track": [
             None,
@@ -75,7 +75,7 @@ playerSets = {
             "Liberal",
             "Fascist",
             "Fascist",
-            "Hitler"
+            "Blue"
         ],
         "track": [
             None,
@@ -95,7 +95,7 @@ playerSets = {
             "Liberal",
             "Fascist",
             "Fascist",
-            "Hitler"
+            "Blue"
         ],
         "track": [
             None,
@@ -116,7 +116,7 @@ playerSets = {
             "Fascist",
             "Fascist",
             "Fascist",
-            "Hitler"
+            "Blue"
         ],
         "track": [
             "inspect",
@@ -138,7 +138,7 @@ playerSets = {
             "Fascist",
             "Fascist",
             "Fascist",
-            "Hitler"
+            "Blue"
         ],
         "track": [
             "inspect",

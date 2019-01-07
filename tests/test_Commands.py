@@ -18,6 +18,7 @@ from ptbtest import UserGenerator
 
 
 class TestCommands(unittest.TestCase):
+
     def setUp(self):
         # For use within the tests we nee some stuff. Starting with a Mockbot
         self.bot = Mockbot()
@@ -28,7 +29,6 @@ class TestCommands(unittest.TestCase):
         self.mg = MessageGenerator(self.bot)
         self.updater = Updater(bot=self.bot)
         GamesController.init()
-
 
     def test_ping(self):
         # Then register the handler with he updater's dispatcher and start polling
@@ -47,7 +47,6 @@ class TestCommands(unittest.TestCase):
         # Always stop the updater at the end of a testcase so it won't hang.
         self.updater.stop()
 
-
     def test_start(self):
         self.updater.dispatcher.add_handler(CommandHandler("start", command_start))
         self.updater.start_polling()
@@ -56,12 +55,11 @@ class TestCommands(unittest.TestCase):
         self.assertEqual(len(self.bot.sent_messages), 2)
         start = self.bot.sent_messages[0]
         self.assertEqual(start['method'], "sendMessage")
-        self.assertIn("Secret Hitler is a social deduction game", start['text'])
+        self.assertIn("Secret Blue is a social deduction game", start['text'])
         help = self.bot.sent_messages[1]
         self.assertEqual(help['method'], "sendMessage")
         self.assertIn("The following commands are available", help['text'])
         self.updater.stop()
-
 
     def test_symbols(self):
         self.updater.dispatcher.add_handler(CommandHandler("symbols", command_symbols))
@@ -74,7 +72,6 @@ class TestCommands(unittest.TestCase):
         self.assertIn("The following symbols can appear on the board:", sent['text'])
         self.updater.stop()
 
-
     def test_board_when_there_is_no_game(self):
         self.updater.dispatcher.add_handler(CommandHandler("board", command_board))
         self.updater.start_polling()
@@ -85,7 +82,6 @@ class TestCommands(unittest.TestCase):
         self.assertEqual(sent['method'], "sendMessage")
         self.assertIn("There is no game in this chat. Create a new game with /newgame", sent['text'])
         self.updater.stop()
-
 
     def test_board_when_game_is_not_running(self):
         game = Game(-999, 12345)
@@ -100,7 +96,6 @@ class TestCommands(unittest.TestCase):
         self.assertEqual(sent['method'], "sendMessage")
         self.assertIn("There is no running game in this chat. Please start the game with /startgame", sent['text'])
         self.updater.stop()
-
 
     def test_board_when_game_is_running(self):
         game = Game(-999, 12345)

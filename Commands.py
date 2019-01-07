@@ -25,9 +25,9 @@ logger = log.getLogger(__name__)
 
 commands = [  # command description used in the "help" command
     '/help - Gives you information about the available commands',
-    '/start - Gives you a short piece of information about Secret Hitler',
+    '/start - Gives you a short piece of information about Secret Blue',
     '/symbols - Shows you all possible symbols of the board',
-    '/rules - Gives you a link to the official Secret Hitler rules',
+    '/rules - Gives you a link to the official Secret Blue rules',
     '/newgame - Creates a new game',
     '/join - Joins an existing game',
     '/startgame - Starts an existing game when all players have joined',
@@ -71,12 +71,12 @@ def command_board(bot, update):
 def command_start(bot, update):
     cid = update.message.chat_id
     bot.send_message(cid,
-                     "\"Secret Hitler is a social deduction game for 5-10 people about finding and stopping the Secret Hitler."
+                     "\"Secret Blue is a social deduction game for 5-10 people about finding and stopping the Secret Blue."
                      " The majority of players are liberals. If they can learn to trust each other, they have enough "
                      "votes to control the table and win the game. But some players are fascists. They will say whatever "
                      "it takes to get elected, enact their agenda, and blame others for the fallout. The liberals must "
                      "work together to discover the truth before the fascists install their cold-blooded leader and win "
-                     "the game.\"\n- official description of Secret Hitler\n\nAdd me to a group and type /newgame to create a game!")
+                     "the game.\"\n- official description of Secret Blue\n\nAdd me to a group and type /newgame to create a game!")
     command_help(bot, update)
 
 
@@ -101,9 +101,9 @@ def command_stats(bot, update):
             stats = json.load(f)
         stattext = "+++ Statistics +++\n" + \
                     "Liberal Wins (policies): " + str(stats.get("libwin_policies")) + "\n" + \
-                    "Liberal Wins (killed Hitler): " + str(stats.get("libwin_kill")) + "\n" + \
+                    "Liberal Wins (killed Blue): " + str(stats.get("libwin_kill")) + "\n" + \
                     "Fascist Wins (policies): " + str(stats.get("fascwin_policies")) + "\n" + \
-                    "Fascist Wins (Hitler chancellor): " + str(stats.get("fascwin_hitler")) + "\n" + \
+                    "Fascist Wins (Blue chancellor): " + str(stats.get("fascwin_blue")) + "\n" + \
                     "Games cancelled: " + str(stats.get("cancelled")) + "\n\n" + \
                     "Total amount of groups: " + str(len(stats.get("groups"))) + "\n" + \
                     "Games running right now: "
@@ -163,7 +163,7 @@ def command_join(bot, update):
             game.add_player(uid, player)
         except Exception:
             bot.send_message(game.cid,
-                             fname + ", I can\'t send you a private message. Please go to @thesecrethitlerbot and click \"Start\".\nYou then need to send /join again.")
+                             fname + ", I can\'t send you a private message. Please go to @thesecretbluebot and click \"Start\".\nYou then need to send /join again.")
         else:
             log.info("%s (%d) joined a game in %d" % (fname, uid, game.cid))
             if len(game.playerlist) > 4:
@@ -197,7 +197,7 @@ def command_startgame(bot, update):
         game.board.state.player_counter = 0
         bot.send_message(game.cid, game.board.print_board())
         #group_name = update.message.chat.title
-        #bot.send_message(ADMIN, "Game of Secret Hitler started in group %s (%d)" % (group_name, cid))
+        #bot.send_message(ADMIN, "Game of Secret Blue started in group %s (%d)" % (group_name, cid))
         MainController.start_round(bot, game)
 
 def command_cancelgame(bot, update):

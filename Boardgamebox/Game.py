@@ -1,5 +1,6 @@
 from random import shuffle
 
+
 class Game(object):
     def __init__(self, cid, initiator):
         self.playerlist = {}
@@ -12,9 +13,9 @@ class Game(object):
     def add_player(self, uid, player):
         self.playerlist[uid] = player
 
-    def get_hitler(self):
+    def get_blue(self):
         for uid in self.playerlist:
-            if self.playerlist[uid].role == "Hitler":
+            if self.playerlist[uid].role == "Blue":
                 return self.playerlist[uid]
 
     def get_fascists(self):

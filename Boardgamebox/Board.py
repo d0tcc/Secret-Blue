@@ -3,6 +3,7 @@ from Constants.Cards import policies
 import random
 from Boardgamebox.State import State
 
+
 class Board(object):
     def __init__(self, playercount, game):
         self.state = State()
@@ -55,10 +56,10 @@ class Board(object):
         board += u"\U0001F501"
         board += "\n\nThere are " + str(len(self.policies)) + " policies left on the pile."
         if self.state.fascist_track >= 3:
-            board += "\n\n" + u"\u203C\uFE0F" + " Beware: If Hitler gets elected as Chancellor the fascists win the game! " + u"\u203C\uFE0F"
-        if len(self.state.not_hitlers) > 0:
-            board += "\n\nWe know that the following players are not Hitler because they got elected as Chancellor after 3 fascist policies:\n"
-            for nh in self.state.not_hitlers:
+            board += "\n\n" + u"\u203C\uFE0F" + " Beware: If Blue gets elected as Chancellor the fascists win the game! " + u"\u203C\uFE0F"
+        if len(self.state.not_blues) > 0:
+            board += "\n\nWe know that the following players are not Blue because they got elected as Chancellor after 3 fascist policies:\n"
+            for nh in self.state.not_blues:
                 board += nh.name + ", "
             board = board[:-2]
         return board
